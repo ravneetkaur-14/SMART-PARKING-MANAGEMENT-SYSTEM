@@ -1,0 +1,8 @@
+package com.smartpark.controller;
+import com.smartpark.entity.User; import com.smartpark.enums.*; import com.smartpark.repository.*; import com.smartpark.service.ParkingService; import jakarta.servlet.http.*; import org.springframework.stereotype.Controller; import org.springframework.ui.Model; import org.springframework.web.bind.annotation.*; import java.time.LocalDate;
+@Controller public class DashboardController {
+ private final ParkingService parking; private final UserRepository users; private final BookingRepository bookings;
+ public DashboardController(ParkingService p,UserRepository u,BookingRepository b){parking=p;users=u;bookings=b;}
+ @GetMapping("/dashboard") String dashboard(HttpSession s,Model m){User u=(User)s.getAttribute("user");if(u==null)return "redirect:/login";m.addAttribute("user",u);m.addAttribute("slots",parking.slots());m.addAttribute("available",parking.slots().stream().filter(x->x.getStatus()==SlotStatus.AVAILABLE).count());m.addAttribute("occupied",parking.slots().stream().filter(x->x.getStatus()==SlotStatus.OCCUPIED).count());m.addAttribute("reserved",parking.slots().stream().filter(x->x.getStatus()==SlotStatus.RESERVED).count());m.addAttribute("totalUsers",users.count());m.addAttribute("todayBookings",bookings.countByBookingDate(LocalDate.now()));m.addAttribute("revenue",bookings.revenue(LocalDate.now(),BookingStatus.CANCELLED));m.addAttribute("recent",u.getRole()==com.smartpark.enums.Role.ADMIN?bookings.findTop8ByOrderByCreatedAtDesc():bookings.findByUserOrderByCreatedAtDesc(u));return "dashboard";}
+ @GetMapping("/slots") String slots(HttpSession s,Model m){if(s.getAttribute("user")==null)return "redirect:/login";m.addAttribute("slots",parking.slots());return "slots";}
+}

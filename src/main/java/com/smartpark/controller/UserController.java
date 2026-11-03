@@ -1,0 +1,11 @@
+package com.smartpark.controller;
+import com.smartpark.entity.*; import com.smartpark.enums.*; import com.smartpark.repository.*; import com.smartpark.service.ParkingService; import jakarta.servlet.http.*; import org.springframework.stereotype.Controller; import org.springframework.ui.Model; import org.springframework.web.bind.annotation.*; import java.time.*;
+@Controller public class UserController {
+ private final ParkingService parking; private final VehicleRepository vehicles; public UserController(ParkingService p,VehicleRepository v){parking=p;vehicles=v;}
+ private User user(HttpSession s){return (User)s.getAttribute("user");}
+ @GetMapping("/vehicles") String vehicles(HttpSession s,Model m){if(user(s)==null)return "redirect:/login";m.addAttribute("vehicles",parking.vehicles(user(s)));return "vehicles";}
+ @PostMapping("/vehicles") String add(@RequestParam String registrationNumber,@RequestParam VehicleType vehicleType,@RequestParam(required=false) String contactNumber,HttpSession s,Model m){try{if(vehicles.findByRegistrationNumberIgnoreCase(registrationNumber).isPresent())throw new IllegalArgumentException("Registration number already exists.");vehicles.save(new Vehicle(user(s),registrationNumber.toUpperCase(),vehicleType,contactNumber));return "redirect:/vehicles?success=Vehicle+added";}catch(Exception e){m.addAttribute("error",e.getMessage());return vehicles(s,m);}}
+ @GetMapping("/book") String book(HttpSession s,Model m){if(user(s)==null)return "redirect:/login";m.addAttribute("vehicles",parking.vehicles(user(s)));m.addAttribute("slots",parking.slots());return "booking";}
+ @PostMapping("/book") String book(@RequestParam Long vehicleId,@RequestParam Long slotId,@RequestParam LocalDate bookingDate,@RequestParam LocalTime entryTime,@RequestParam LocalTime exitTime,HttpSession s,Model m){try{Booking b=parking.book(user(s),vehicleId,slotId,bookingDate,entryTime,exitTime);return "redirect:/dashboard?success=Booking+"+b.getBookingCode();}catch(Exception e){m.addAttribute("error",e.getMessage());return book(s,m);}}
+ @PostMapping("/bookings/{id}/cancel") String cancel(@PathVariable Long id,HttpSession s){try{parking.cancel(user(s),id);}catch(Exception ignored){}return "redirect:/dashboard?success=Booking+updated";}
+}
